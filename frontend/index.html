@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veritus.ai Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        .message {
+            max-width: 80%;
+            margin-bottom: 1rem;
+        }
+        .user-message {
+            margin-left: auto;
+        }
+        .bot-message {
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Veritus.ai Chatbot</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-4 chat-container overflow-y-auto">
+            <div id="chat-messages" class="space-y-4">
+                <div class="message bot-message bg-blue-100 p-4 rounded-lg">
+                    <p>Hello! I'm your Veritus.ai assistant. How can I help you today?</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 flex space-x-4">
+            <input type="text" id="user-input" 
+                   class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Type your message here...">
+            <button onclick="sendMessage()" 
+                    class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+
+        function addMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message bg-green-100' : 'bot-message bg-blue-100'} p-4 rounded-lg`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, true);
+            userInput.value = '';
+
+            try {
+                const response = await fetch('http://localhost:8000/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: message }),
+                });
+
+                const data = await response.json();
+                
+                // Add bot response to chat
+                addMessage(data.answer);
+                
+                // Add sources if available
+                if (data.sources && data.sources.length > 0) {
+                    const sourcesDiv = document.createElement('div');
+                    sourcesDiv.className = 'message bot-message bg-gray-100 p-4 rounded-lg mt-2';
+                    sourcesDiv.innerHTML = `
+                        <p class="text-sm text-gray-600">Sources:</p>
+                        <ul class="list-disc list-inside">
+                            ${data.sources.map(source => `<li><a href="${source}" target="_blank" class="text-blue-500 hover:underline">${source}</a></li>`).join('')}
+                        </ul>
+                    `;
+                    chatMessages.appendChild(sourcesDiv);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, there was an error processing your request. Please try again.');
+            }
+        }
+
+        // Allow sending message with Enter key
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html> 
